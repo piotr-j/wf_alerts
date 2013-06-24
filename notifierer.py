@@ -2,27 +2,24 @@ from datetime import datetime as dt
 import time
 import sys
 import re
+import winsound
 import ConfigParser
 # requires python-twitter
 # get it here: https://github.com/bear/python-twitter
 import twitter
 
-# username of user you want to check eg. @WarframeAlerts
-USERS = ['@WarframeAlerts', '@Totalbiscuit']
-# what must be in message to be notified
-FILTERS = ['(Blueprint)', '(Artifact)']
-REGEX_FILTERS = ['']
-
 class Notifierer(object):
     def __init__(self, config):
         self._last_id = None
         self._user_last_id = {}
-        self._load_config()
+        self._load_config(config)
+        # compile reged to search for alert duration in wf tweet
+        self._time_regex = re.compile('\s(\d+)[m]\s')
         self._update_feeds()
 
 
-    def _load_config(self):
-        """Try getting stuff from read config"""
+    def _load_config(self, config):
+        """Try getting stuff from specified config"""
         try:
             consumer_key = config.get('TwitterSettings', 'consumer_key')
             consumer_secret = config.get('TwitterSettings', 'consumer_secret')
@@ -31,7 +28,7 @@ class Notifierer(object):
 
             self._update_delay = config.getint('NotifiererSettings', 'check_delay')
             self._num_tweets = config.getint('NotifiererSettings', 'num_tweets')
-
+            self._sound = config.get('NotifiererSettings', 'sound')
             self._users = self._parse_users(config.get('MonitoredFeeds', 'users'))
             self._filters = self._parse_filters(config.get('MonitoredFeeds', 'filters'))
         except ConfigParser.NoOptionError, e:
@@ -40,6 +37,32 @@ class Notifierer(object):
             sys.exit(1)
 
         self._twitter_login(consumer_key, consumer_secret, access_token_key, access_token_secret)
+
+
+    def _parse_users(self, users):
+        return users.split(';')   
+
+
+    def _parse_filters(self, raw_filters):
+        common_filters = []
+        filters = {}
+        raw_filters = raw_filters.split(';')
+        for raw_filter in raw_filters:
+            raw_filter = raw_filter.split(':')
+            user = raw_filter[0]
+            if user.startswith('@'):
+                # filters for single user
+                filters[user] = raw_filter[1].split(',')
+            else:
+                # filters for all users
+                common_filters = raw_filter[0].split(',')
+
+        # add common filters to user ffilters
+        if common_filters:
+            for user in self._users:
+                filters.get(user, []).extend(common_filters)
+
+        return filters
 
 
     def _twitter_login(self, consumer_key, consumer_secret, access_token_key, access_token_secret):
@@ -54,6 +77,7 @@ class Notifierer(object):
             self._tw_api.VerifyCredentials()
         except twitter.TwitterError, e:
             print 'Twitter error:', e[0][0][u'message']
+            print 'Make sure you entered correct credentials!'
             sys.exit(1)
 
 
@@ -67,25 +91,6 @@ class Notifierer(object):
             # wait for CHECK_DELAY minutes
             time.sleep(self._update_delay * 60)
 
-
-    def _parse_users(self, users):
-        return users.split(';')   
-
-
-    def _parse_filters(self, raw_filters):
-        filters = {}
-        raw_filters = raw_filters.split(';')
-        for raw_filter in raw_filters:
-            raw_filter = raw_filter.split(':')
-            user = raw_filter[0]
-            if(len(raw_filter) == 2):
-                user_filters = raw_filter[1].split(',')
-
-            filters[user] = user_filters
-
-        print filters
-        return filters
-    
 
     def _check_feed(self, user):
         statuses = self._get_statuses(user)
@@ -117,19 +122,43 @@ class Notifierer(object):
         # calculate how long ago this tweet occured
         tweet_time = dt.fromtimestamp(status.GetCreatedAtInSeconds())
         delta_time = current_time - tweet_time
-        time = round(delta_time.total_seconds() / 60, 0)
+        time_delta = round(delta_time.total_seconds() / 60, 0)
 
         if(self._filters.get(user)):
             for filter in self._filters.get(user):
                 if not filter in status.text:
                     continue
-                self._notify(status.text, time)
+                self._notify(status.text, time_delta)
         else:
-            self._notify(status.text, time)
+            self._notify(status.text, time_delta)
 
 
-    def _notify(self, text, time):
-        print text
+    def _notify(self, text, time_delta):
+        # find xxm in text
+        regex_search = self._time_regex.search(text)
+        if not regex_search:
+            return
+
+        # get number of minutes
+        alert_duration = int(regex_search.group(1))
+        time_left = int(alert_duration - time_delta)
+        if time_left > 0:
+            print 'New alert:'
+            print text
+            print time_left, 'minutes left!\n'
+            self._beep(self._sound)
+
+
+    def _beep(self, sound):
+        try:
+            # play user sound or default windows sound
+            if sound:
+                flags = winsound.SND_FILENAME | winsound.SND_ASYNC
+                winsound.PlaySound(sound, flags)
+            else:
+                winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS)
+        except RuntimeError, e:
+            print 'Sound error:', e
 
 
 def _read_config():
@@ -161,6 +190,10 @@ def _create_config():
     config.set('NotifiererSettings', 'check_delay', '5')
     config.set('NotifiererSettings', '; max number of tweets per update, max 200. default: 20', '')
     config.set('NotifiererSettings', 'num_tweets', '20')
+    config.set('NotifiererSettings', '; path to wav sound to be played', '')
+    config.set('NotifiererSettings', '; example: sound = notification.wav', '')
+    config.set('NotifiererSettings', 'sound', 'notification.wav')
+
 
     config.add_section('MonitoredFeeds')
     config.set('MonitoredFeeds', '; add usernames to monitor, semicolon (;) separated', '')
@@ -178,10 +211,11 @@ def _create_config():
 
     sys.exit(1)
 
+
 if __name__ == '__main__':
     config = _read_config()
     try:
         Notifierer(config)
     except KeyboardInterrupt, e:
         print 'Good bye.'
-
+    
