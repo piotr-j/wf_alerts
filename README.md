@@ -1,13 +1,4 @@
 # WF Alerts
-=========
-
-
-What is it?
-
-Simple python notifier for https://twitter.com/WarframeAlerts tweets with filtering options.
-Some assembly required.
-
-# WF Alerts
 
 **Simple notifier for [WarframeAlerts](https://twitter.com/WarframeAlerts) tweets**
 
@@ -17,7 +8,7 @@ Author: Piotr Jastrzebski <piotrj.dev@gmail.com>
 
 This script notifies about alerts containing specific keywords. While its meant for Warframe Alerts tweets, it can be used for other users as well. Currently it works only on windows, as it requires `winsound` for notification sound.
 
-## Using
+## How to setup and run
 
 Get the code and install requirements:
 ```
