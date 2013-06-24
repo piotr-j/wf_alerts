@@ -78,6 +78,7 @@ class Notifierer(object):
         except twitter.TwitterError, e:
             print 'Twitter error:', e[0][0][u'message']
             print 'Make sure you entered correct credentials!'
+            raw_input()
             sys.exit(1)
 
 
@@ -208,7 +209,8 @@ def _create_config():
     # Write it'
     with open('notifierer.cfg', 'w') as configfile:
         config.write(configfile)   
-
+        
+    raw_input()
     sys.exit(1)
 
 
