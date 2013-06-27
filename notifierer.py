@@ -95,23 +95,33 @@ class Notifierer(object):
         self._custom_notifies[username] = notify_func
 
     def _check_feed(self, user):
-        statuses = self._get_statuses(user)
+        statuses = self._get_statuses(user, self._user_last_id.get(user, None))
         if statuses:
             # get current time for later use
             current_time = dt.now()
             # statuses are in descending order
             self._user_last_id[user] = statuses[0].id
-            print 'Tweets for', user
             # check all new statuses
+            filtered = []
             for status in statuses:
-                self._check_status(status, user, current_time)
+                filtered_status = self._check_status(status, user, current_time)
+                if filtered_status:
+                    filtered.append(filtered_status)
+            # there are some new statuses
+            if filtered:
+                print 'Tweets for', user
+                for filtered_status in filtered:
+                    # 0 - text
+                    # 1 - time delta
+                    self._notify(filtered_status[0], filtered_status[1])
 
 
-    def _get_statuses(self, user):
+    def _get_statuses(self, user, since_id):
+        """returns all new statuses from user since given id"""
         try:
             statuses = self._tw_api.GetUserTimeline(
                 screen_name=user, 
-                since_id=self._user_last_id.get(user, None),
+                since_id=since_id,
                 count=self._num_tweets)
             return statuses
         except twitter.TwitterError, e:
@@ -121,25 +131,36 @@ class Notifierer(object):
 
 
     def _check_status(self, status, user, current_time):
+        """checks if given status should be displayed"""
         # calculate how long ago this tweet occured
         tweet_time = dt.fromtimestamp(status.GetCreatedAtInSeconds())
         delta_time = current_time - tweet_time
         time_delta = round(delta_time.total_seconds() / 60, 0)
+        # if there is no filter just add it
+        if not self._filters.get(user):
+            return self._custom_notify(user, status.text, time_delta)
+        # filter results
+        for filter in self._filters.get(user):
+            # check if desired word is in status text
+            if not filter in status.text:
+                continue
+            #print status.text, time_delta
+            return self._custom_notify(user, status.text, time_delta)
+        return None
 
-        if self._filters.get(user):
-            for filter in self._filters.get(user):
-                # check if desired word is in status text
-                if not filter in status.text:
-                    continue
-                # get custom notify
-                custom_notify = self._custom_notifies.get(user)
-                # if exists get new text
-                if custom_notify:
-                    self._notify(custom_notify(status.text, time_delta), time_delta)
-                else:
-                    self._notify(status.text, time_delta)
+
+    def _custom_notify(self, user, text, time_delta):
+        """parses given status text with custom user funcion"""
+        # get custom notify
+        custom_notify = self._custom_notifies.get(user)
+        # if exists get new text
+        if custom_notify:
+            # custom_notify may return none it status shlound be show
+            text = custom_notify(text, time_delta)
+            if text:
+                return text, time_delta
         else:
-            self._notify(status.text, time_delta)
+            return status.text, time_delta
 
 
     def _notify(self, text, time_delta):
