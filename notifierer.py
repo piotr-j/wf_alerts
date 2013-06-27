@@ -234,18 +234,22 @@ def _create_config():
     raw_input()
     sys.exit(1)
 
+# minimum amount of credits to show the alert
+MIN_CREDS = 7000
+
 def notify_wf(text, time_delta):
      # compile reged to search for alert duration in wf tweet
-    regex = re.compile('\s(\d+)[m]\s')
     regex_search = re.search('\s(\d+)[m]\s', text)
     if not regex_search:
         return None
-
+    # theres always a credit value for the alert
+    creds = int(re.search('\s(\d+)cr', text).group(1))
     # get number of minutes
     alert_duration = int(regex_search.group(1))
     time_left = int(alert_duration - time_delta)
     if time_left > 0:
-        return text + '\n' + str(time_left) + ' minutes left!'
+        if '(Blueprint)' in text or creds > MIN_CREDS:
+            return text + '\n' + str(time_left) + ' minutes left!'
     return None
 
 
