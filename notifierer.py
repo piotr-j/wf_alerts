@@ -13,10 +13,6 @@ class Notifierer(object):
         self._last_id = None
         self._user_last_id = {}
         self._load_config(config)
-        # compile reged to search for alert duration in wf tweet
-        self._time_regex = re.compile('\s(\d+)[m]\s')
-        self._update_feeds()
-
 
     def _load_config(self, config):
         """Try getting stuff from specified config"""
@@ -31,6 +27,7 @@ class Notifierer(object):
             self._sound = config.get('NotifiererSettings', 'sound')
             self._users = self._parse_users(config.get('MonitoredFeeds', 'users'))
             self._filters = self._parse_filters(config.get('MonitoredFeeds', 'filters'))
+            self._custom_notifies = {}
         except ConfigParser.NoOptionError, e:
             print 'Please fix this config error:'
             print e
@@ -82,8 +79,8 @@ class Notifierer(object):
             sys.exit(1)
 
 
-    def _update_feeds(self):
-        """update all feeds periodicly"""
+    def update_feeds(self):
+        """start updating all feeds periodicly"""
         while True:
             # check for new tweets
             for user in self._users:
@@ -92,6 +89,10 @@ class Notifierer(object):
             # wait for CHECK_DELAY minutes
             time.sleep(self._update_delay * 60)
 
+    def add_custom_notify(self, username, notify_func):
+        """ add custom notify function
+        it must take status text and time delta and return new notify text or None to skip"""
+        self._custom_notifies[username] = notify_func
 
     def _check_feed(self, user):
         statuses = self._get_statuses(user)
@@ -125,29 +126,28 @@ class Notifierer(object):
         delta_time = current_time - tweet_time
         time_delta = round(delta_time.total_seconds() / 60, 0)
 
-        if(self._filters.get(user)):
+        if self._filters.get(user):
             for filter in self._filters.get(user):
+                # check if desired word is in status text
                 if not filter in status.text:
                     continue
-                self._notify(status.text, time_delta)
+                # get custom notify
+                custom_notify = self._custom_notifies.get(user)
+                # if exists get new text
+                if custom_notify:
+                    self._notify(custom_notify(status.text, time_delta), time_delta)
+                else:
+                    self._notify(status.text, time_delta)
         else:
             self._notify(status.text, time_delta)
 
 
     def _notify(self, text, time_delta):
-        # find xxm in text
-        regex_search = self._time_regex.search(text)
-        if not regex_search:
+        if not text:
             return
-
-        # get number of minutes
-        alert_duration = int(regex_search.group(1))
-        time_left = int(alert_duration - time_delta)
-        if time_left > 0:
-            print 'New alert:'
-            print text
-            print time_left, 'minutes left!\n'
-            self._beep(self._sound)
+        print 'New tweet', str(int(time_delta)) + 'm ago!'
+        print text
+        self._beep(self._sound)
 
 
     def _beep(self, sound):
@@ -213,11 +213,27 @@ def _create_config():
     raw_input()
     sys.exit(1)
 
+def notify_wf(text, time_delta):
+     # compile reged to search for alert duration in wf tweet
+    regex = re.compile('\s(\d+)[m]\s')
+    regex_search = re.search('\s(\d+)[m]\s', text)
+    if not regex_search:
+        return None
+
+    # get number of minutes
+    alert_duration = int(regex_search.group(1))
+    time_left = int(alert_duration - time_delta)
+    if time_left > 0:
+        return text + '\n' + str(time_left) + ' minutes left!'
+    return None
+
 
 if __name__ == '__main__':
     config = _read_config()
     try:
-        Notifierer(config)
+        n = Notifierer(config)
+        n.add_custom_notify('@WarframeAlerts', notify_wf)
+        n.update_feeds()
     except KeyboardInterrupt, e:
         print 'Good bye.'
     
