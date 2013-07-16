@@ -8,6 +8,8 @@ import ConfigParser
 # get it here: https://github.com/bear/python-twitter
 import twitter
 
+from urllib2 import URLError
+
 class Notifierer(object):
     def __init__(self, config):
         self._last_id = None
@@ -248,7 +250,7 @@ def notify_wf(text, time_delta):
     alert_duration = int(regex_search.group(1))
     time_left = int(alert_duration - time_delta)
     if time_left > 0:
-        if '(Blueprint)' in text or creds > MIN_CREDS:
+        if '(Blueprint)' in text or creds > MIN_CREDS or '(Aura)' in text:
             return text + '\n' + str(time_left) + ' minutes left!'
     return None
 
@@ -261,4 +263,7 @@ if __name__ == '__main__':
         n.update_feeds()
     except KeyboardInterrupt, e:
         print 'Good bye.'
+    except URLError, e:
+        print 'There was a problem with the connection:'
+        print e
     
