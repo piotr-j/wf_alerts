@@ -4,6 +4,10 @@ import sys
 import re
 import winsound
 import ConfigParser
+
+import logging
+LOG_FILENAME = 'log.log'
+
 # requires python-twitter
 # get it here: https://github.com/bear/python-twitter
 import twitter
@@ -74,6 +78,7 @@ class Notifierer(object):
         try:
             # veryfy as its not checked above
             self._tw_api.VerifyCredentials()
+            print 'Login successful'
         except twitter.TwitterError, e:
             print 'Twitter error:', e[0][0][u'message']
             print 'Make sure you entered correct credentials!'
@@ -256,6 +261,7 @@ def notify_wf(text, time_delta):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG,)
     config = _read_config()
     try:
         n = Notifierer(config)
@@ -264,6 +270,12 @@ if __name__ == '__main__':
     except KeyboardInterrupt, e:
         print 'Good bye.'
     except URLError, e:
-        print 'There was a problem with the connection:'
-        print e
-    
+        print 'Url error, see log for details'
+        logging.exception('There was a problem with the connection:')
+        raw_input('Enter to quit')
+    except Exception, e:
+        print 'Unknown error, see log for details'
+        logging.exception('Unknown error:')
+        raw_input('Enter to quit')
+
+        
