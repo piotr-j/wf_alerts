@@ -254,8 +254,10 @@ def notify_wf(text, time_delta):
     # get number of minutes
     alert_duration = int(regex_search.group(1))
     time_left = int(alert_duration - time_delta)
+    allowed = ['(Resource)', '(Aura)', '(Blueprint)']
+    
     if time_left > 0:
-        if '(Blueprint)' in text or creds > MIN_CREDS or '(Aura)' in text:
+        if any([x for x in allowed if x in text]) or creds > MIN_CREDS:
             return text + '\n' + str(time_left) + ' minutes left!'
     return None
 

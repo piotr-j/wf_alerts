@@ -1,25 +1,30 @@
-ERROR:root:There was a problem with the connection:
+ERROR:root:Unknown error:
 Traceback (most recent call last):
-  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 269, in <module>
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 271, in <module>
     n.update_feeds()
   File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 94, in update_feeds
     self._check_feed(user)
-  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 105, in _check_feed
-    statuses = self._get_statuses(user, self._user_last_id.get(user, None))
-  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 132, in _get_statuses
-    count=self._num_tweets)
-  File "build\bdist.win32\egg\twitter.py", line 2793, in GetUserTimeline
-    json = self._FetchUrl(url, parameters=parameters)
-  File "build\bdist.win32\egg\twitter.py", line 4549, in _FetchUrl
-    response = opener.open(url, encoded_post_data)
-  File "C:\dev\Python27\lib\urllib2.py", line 400, in open
-    response = self._open(req, data)
-  File "C:\dev\Python27\lib\urllib2.py", line 418, in _open
-    '_open', req)
-  File "C:\dev\Python27\lib\urllib2.py", line 378, in _call_chain
-    result = func(*args)
-  File "C:\dev\Python27\lib\urllib2.py", line 1215, in https_open
-    return self.do_open(httplib.HTTPSConnection, req)
-  File "C:\dev\Python27\lib\urllib2.py", line 1177, in do_open
-    raise URLError(err)
-URLError: <urlopen error [Errno 11004] getaddrinfo failed>
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 114, in _check_feed
+    filtered_status = self._check_status(status, user, current_time)
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 155, in _check_status
+    return self._custom_notify(user, status.text, time_delta)
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 166, in _custom_notify
+    text = custom_notify(text, time_delta)
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 260, in notify_wf
+    if any(allowed) in text or creds > MIN_CREDS:
+TypeError: coercing to Unicode: need string or buffer, bool found
+ERROR:root:Unknown error:
+Traceback (most recent call last):
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 271, in <module>
+    n.update_feeds()
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 94, in update_feeds
+    self._check_feed(user)
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 114, in _check_feed
+    filtered_status = self._check_status(status, user, current_time)
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 155, in _check_status
+    return self._custom_notify(user, status.text, time_delta)
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 166, in _custom_notify
+    text = custom_notify(text, time_delta)
+  File "C:\Dropbox\PROJECTS\Workspaces\Python\twitter_notifier\notifierer.py", line 260, in notify_wf
+    if any([x for x in allowed if x in text]) in text or creds > MIN_CREDS:
+TypeError: coercing to Unicode: need string or buffer, bool found
